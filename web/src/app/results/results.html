@@ -1,0 +1,109 @@
+<header class="intro">
+  <h1>Wallet QA results</h1>
+  <p class="muted">Wallets tested against EUDIPLO with Wallet QA.</p>
+</header>
+
+<output class="message" aria-live="polite" id="message" data-testid="message">{{ message() }}</output>
+
+<mat-card appearance="outlined" class="card" id="about-results" data-testid="about-results">
+  <mat-card-header><h2 mat-card-title>About these results</h2></mat-card-header>
+  <mat-card-content>
+    <p>
+      This is not a certification. Each entry shows what one tester saw with one wallet build on one date, and anyone
+      can repeat it on their own device with the same wallet build and test.
+    </p>
+    <ul>
+      <li><strong>Recorded by the instance</strong>: published from the run records of the Wallet QA instance named in the entry.</li>
+      <li><strong>Self-reported</strong>: a report uploaded from another Wallet QA instance; this instance did not see the runs.</li>
+      <li><strong>Tester-attested</strong>: the pass rests on the tester's checklist answers, not on EUDIPLO protocol evidence.</li>
+    </ul>
+    <p class="muted">
+      Entries contain the wallet, build, platform, device, versions and verdicts only. To have an entry removed, open an
+      issue in <a href="https://github.com/EUDIPLO/wallet-qa/issues">EUDIPLO/wallet-qa</a>.
+    </p>
+  </mat-card-content>
+</mat-card>
+
+@if (feed(); as data) {
+  <mat-card appearance="outlined" class="card" id="features" data-testid="features">
+    <mat-card-header><h2 mat-card-title>Feature coverage</h2></mat-card-header>
+    <mat-card-content>
+      <p class="muted">Features no test in the catalog exercises yet are marked as not covered.</p>
+      <ul class="features">
+        @for (feature of data.features; track feature.id) {
+          <li [id]="'feature-' + feature.id" [attr.data-testid]="'feature-' + feature.id">
+            <span>{{ feature.label }}</span>
+            <span class="chip" [class.neutral]="!feature.covered" [class.passed]="feature.covered">
+              {{ feature.covered ? 'covered' : 'not covered' }}
+            </span>
+          </li>
+        }
+      </ul>
+    </mat-card-content>
+  </mat-card>
+
+  <section class="wallets" aria-labelledby="wallets-heading">
+    <div class="heading">
+      <h2 id="wallets-heading">Wallets</h2>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Wallet</mat-label>
+        <!-- A native select: its picker is the platform's, which UI test runners drive reliably. -->
+        <select matNativeControl id="wallet-filter" data-testid="wallet-filter" (change)="wallet.set($any($event.target).value)">
+          <option value="" [selected]="!wallet()">All wallets</option>
+          @for (name of wallets(); track name) {
+            <option [value]="name" [selected]="name === wallet()">{{ name }}</option>
+          }
+        </select>
+      </mat-form-field>
+    </div>
+
+    <div id="results" data-testid="results">
+      @for (result of shown(); track result.id) {
+        <mat-card appearance="outlined" class="card result" [id]="'result-' + result.id" [attr.data-testid]="'result-' + result.id">
+          <mat-card-header>
+            <h3 mat-card-title>{{ walletTitle(result.wallet) }}</h3>
+            <p mat-card-subtitle>{{ details(result) }}</p>
+          </mat-card-header>
+          <mat-card-content>
+            <p class="provenance" [class.self-reported]="result.provenance === 'self-reported'">{{ provenance(result) }}</p>
+            <div class="table-scroll">
+              <table mat-table [dataSource]="result.tests">
+                <ng-container matColumnDef="test">
+                  <th mat-header-cell *matHeaderCellDef>Test</th>
+                  <td mat-cell *matCellDef="let test">
+                    <strong>{{ test.scenarioId }}</strong><br /><small>{{ test.label }}</small>
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="verdict">
+                  <th mat-header-cell *matHeaderCellDef>Verdict</th>
+                  <td mat-cell *matCellDef="let test">
+                    <span class="chip" [class]="tone(test.verdict)">{{ test.verdict }}</span>
+                    @if (test.attested) {
+                      <small class="attested">tester-attested</small>
+                    }
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="features">
+                  <th mat-header-cell *matHeaderCellDef>Features</th>
+                  <td mat-cell *matCellDef="let test">{{ features(test.features) }}</td>
+                </ng-container>
+                <ng-container matColumnDef="tested">
+                  <th mat-header-cell *matHeaderCellDef>Tested</th>
+                  <td mat-cell *matCellDef="let test" class="nowrap">{{ date(test.testedAt) }}</td>
+                </ng-container>
+                <ng-container matColumnDef="eudiplo">
+                  <th mat-header-cell *matHeaderCellDef>EUDIPLO</th>
+                  <td mat-cell *matCellDef="let test">{{ version(test) }}</td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="columns"></tr>
+                <tr mat-row *matRowDef="let row; columns: columns"></tr>
+              </table>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      } @empty {
+        <p class="muted">No published results yet.</p>
+      }
+    </div>
+  </section>
+}

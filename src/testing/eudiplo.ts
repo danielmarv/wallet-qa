@@ -14,16 +14,33 @@ import type { SessionEvidence, StepDefinition } from './types.js';
 export interface Backend {
   start(
     step: StepDefinition,
-  ): Promise<{ sessionId: string; uri: string; crossDeviceUri?: string }>;
+  ): Promise<{
+    sessionId: string;
+    uri: string;
+    crossDeviceUri?: string;
+    /** dc-api steps: the signed request object for navigator.credentials.get. */
+    dcApi?: { request: string };
+  }>;
   session(id: string): Promise<SessionEvidence>;
   deleteSession(id: string): Promise<void>;
   /** Sets the status-list entry of every credential issued in the session (0 valid, 1 revoked, 2 suspended). */
   setStatus(sessionId: string, status: 0 | 1 | 2): Promise<void>;
   health(): Promise<void>;
   requestObject(uri: string, method: string, body?: string): Promise<string>;
+  /**
+   * Forwards what the Digital Credentials API returned in the browser to the
+   * verifier's response endpoint. Returns the verifier's HTTP status.
+   */
+  dcApiResponse?(responseUri: string, body: DcApiResponse): Promise<number>;
   /** PEM chain of the tenant's access key chain, or null when it does not exist. */
   accessCertificate?(keyId: string): Promise<string | null>;
 }
+/** The wallet's answer over the Digital Credentials API: an encrypted response or an OAuth error. */
+export type DcApiResponse =
+  | { response: string }
+  | { error: string; error_description?: string };
+/** OpenID4VP 1.0 Digital Credentials API protocol identifier for signed requests. */
+export const DC_API_PROTOCOL = 'openid4vp-v1-signed';
 export const digest = (value: string) =>
   createHash('sha256').update(value).digest('hex');
 export function normalizeSession(value: unknown): SessionEvidence {
@@ -214,17 +231,42 @@ export class EudiploBackend implements Backend {
         throw new Error('EUDIPLO did not create an issuance offer');
       return { sessionId: response.data.session, uri: response.data.uri! };
     }
+    const dcApi = step.channel === 'dc-api';
     const response = await verifierOfferControllerGetOffer({
       client: this.client,
       headers,
-      body: {
-        requestId: step.configId!,
-        response_type: 'uri',
-        redirectUri: this.config.redirectUri,
-      },
+      // The wallet checks the calling page's origin against expected_origins, so a
+      // dc-api request is bound to the Wallet QA page that will hand it over.
+      body: dcApi
+        ? {
+            requestId: step.configId!,
+            response_type: 'dc-api',
+            expected_origin: this.config.origin,
+          }
+        : {
+            requestId: step.configId!,
+            response_type: 'uri',
+            redirectUri: this.config.redirectUri,
+          },
     });
     if (!response.data)
       throw new Error('EUDIPLO did not create a presentation request');
+    if (dcApi) {
+      const session = await sessionControllerGetSession({
+        client: this.client,
+        path: { id: response.data.session },
+        headers,
+      });
+      const request = (session.data as { requestObject?: unknown } | undefined)
+        ?.requestObject;
+      if (typeof request !== 'string' || request.split('.').length !== 3)
+        throw new Error('EUDIPLO did not return a signed DC API request');
+      return {
+        sessionId: response.data.session,
+        uri: response.data.uri!,
+        dcApi: { request },
+      };
+    }
     return {
       sessionId: response.data.session,
       uri: response.data.uri!,
@@ -293,7 +335,8 @@ export class EudiploBackend implements Backend {
     if (!response.ok) throw new Error('EUDIPLO is unavailable');
     await this.authenticate();
   }
-  async requestObject(uri: string, method: string, body?: string) {
+  /** Maps a wallet-facing EUDIPLO URI to the internal address; refuses any other origin. */
+  private internalUrl(uri: string, what: string) {
     const publicUri = new URL(uri);
     const allowed = new URL(this.config.publicUrl);
     if (
@@ -301,11 +344,27 @@ export class EudiploBackend implements Backend {
       publicUri.username ||
       publicUri.password
     )
-      throw new Error('Unexpected request-object origin');
+      throw new Error(`Unexpected ${what} origin`);
     const internal = new URL(this.config.baseUrl);
     // Only an EUDIPLO-issued URI can enter this method. No arbitrary URL input API exists.
     internal.pathname = publicUri.pathname;
     internal.search = publicUri.search;
+    return internal;
+  }
+  async dcApiResponse(responseUri: string, body: DcApiResponse) {
+    const response = await fetch(this.internalUrl(responseUri, 'response'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // sendResponse: false keeps the verified claims out of the reply; the
+      // engine reads them from the session like for every other presentation.
+      body: JSON.stringify({ ...body, sendResponse: false }),
+      redirect: 'error',
+      signal: AbortSignal.timeout(10000),
+    });
+    return response.status;
+  }
+  async requestObject(uri: string, method: string, body?: string) {
+    const internal = this.internalUrl(uri, 'request-object');
     const response = await fetch(internal, {
       method,
       body: method === 'POST' ? body : undefined,

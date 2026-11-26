@@ -1,0 +1,275 @@
+@use '@angular/material' as mat;
+
+// The overview: what Wallet QA does (intro and run trace) and what this instance tests. Phone
+// first; from 960 px the intro gets two columns.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 1120px;
+  margin: 0 auto;
+
+  @include mat.card-overrides(
+    (
+      outlined-container-color: var(--mat-sys-surface),
+      outlined-outline-color: var(--mat-sys-outline-variant),
+      outlined-container-shape: var(--mat-sys-corner-large),
+    )
+  );
+  @include mat.button-overrides(
+    (
+      filled-container-height: 48px,
+      outlined-container-height: 48px,
+      text-container-height: 48px,
+    )
+  );
+}
+
+// Intro: the pitch on the left, the run trace on the right.
+.intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 32px;
+  padding-top: 8px;
+}
+
+.pitch {
+  max-width: 36rem;
+
+  h1 {
+    margin: 0 0 16px;
+    font: var(--mat-sys-headline-medium);
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  p {
+    margin: 0 0 12px;
+    font: var(--mat-sys-body-large);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  .lead {
+    color: var(--mat-sys-on-surface);
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0 24px;
+}
+
+// The run trace: a run from workspace to verdict, joined by one line, with the statuses the run
+// screen shows at each step.
+.trace {
+  --marker: 32px;
+  counter-reset: step;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.trace-step {
+  position: relative;
+  counter-increment: step;
+  padding: 0 0 24px calc(var(--marker) + 16px);
+
+  &::before {
+    content: counter(step);
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: grid;
+    place-items: center;
+    width: var(--marker);
+    height: var(--marker);
+    border-radius: 50%;
+    background: var(--mat-sys-primary-container);
+    color: var(--mat-sys-on-primary-container);
+    font: var(--mat-sys-label-large);
+  }
+
+  // The line to the next step.
+  &:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: calc(var(--marker) + 4px);
+    bottom: 4px;
+    left: calc(var(--marker) / 2 - 1px);
+    width: 2px;
+    background: var(--mat-sys-outline-variant);
+  }
+
+  // The verdict is where the run ends up.
+  &:last-child {
+    padding-bottom: 0;
+
+    &::before {
+      background: var(--mat-sys-primary);
+      color: var(--mat-sys-on-primary);
+    }
+  }
+
+  h2 {
+    margin: 4px 0 4px;
+    font: var(--mat-sys-title-medium);
+  }
+
+  p {
+    margin: 0;
+    font: var(--mat-sys-body-medium);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+// The same chips as the live run and the results page.
+.status {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--mat-sys-corner-full);
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+  // After font: the shorthand resets line-height.
+  line-height: 20px;
+  white-space: nowrap;
+
+  &.running {
+    background: var(--mat-sys-secondary-container);
+    color: var(--mat-sys-on-secondary-container);
+  }
+
+  &.passed {
+    background: var(--qa-success-soft);
+    color: var(--qa-success);
+  }
+
+  &.failed {
+    background: var(--qa-danger-soft);
+    color: var(--qa-danger);
+  }
+}
+
+// What the tests check: one column per catalog section.
+.catalog {
+  padding-top: 24px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.catalog-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-bottom: 16px;
+
+  h2 {
+    margin: 0;
+    font: var(--mat-sys-title-large);
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.sections {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+
+.section {
+  h3 {
+    margin: 0 0 4px;
+    font: var(--mat-sys-title-medium);
+  }
+
+  .question {
+    margin: 0 0 8px;
+    font: var(--mat-sys-body-large);
+  }
+
+  .count {
+    margin: 0 0 8px;
+    font: var(--mat-sys-label-large);
+    color: var(--mat-sys-primary);
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 18px;
+    font: var(--mat-sys-body-medium);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  li + li {
+    margin-top: 2px;
+  }
+}
+
+.cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+
+  p {
+    margin: 0;
+    font: var(--mat-sys-title-medium);
+  }
+}
+
+.big {
+  min-height: 48px;
+}
+
+.muted {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+@media (min-width: 760px) {
+  .sections {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 32px;
+  }
+
+  .section + .section {
+    padding-left: 32px;
+    border-left: 1px solid var(--mat-sys-outline-variant);
+  }
+}
+
+@media (min-width: 960px) {
+  :host {
+    gap: 40px;
+  }
+
+  .intro {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 64px;
+    padding-top: 24px;
+  }
+
+  .pitch h1 {
+    font: var(--mat-sys-display-small);
+    letter-spacing: -0.015em;
+  }
+
+}

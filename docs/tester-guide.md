@@ -129,7 +129,10 @@ Search by ID, name or tag, or filter by tag.
 2. Press **Start run**. The live panel shows the instruction, a QR code, **Open wallet** (on
    the phone) and the transaction code if one is needed.
 3. **Do what the instruction says** with the wallet: scan the QR code or tap Open wallet,
-   go through the wallet's screens as a normal user would.
+   go through the wallet's screens as a normal user would. The Digital Credentials API
+   tests (P-DCAPI-…) have no QR code: press **Request with Digital Credentials API** and
+   pick the wallet in the browser's dialog. This needs a browser with that API (a current
+   Chrome, for example) and a wallet registered with the operating system for it.
 4. **Controls.** Some tests show buttons during the run, such as *Revoke the issued
    credential* or *Suspend the issued credential*. Press them when the instruction says so,
    not earlier.

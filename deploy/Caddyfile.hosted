@@ -9,11 +9,12 @@
 # stay open: /protocol/* (fault request objects), /trust/* (test roots), /health/*.
 # /r/* stays open too, so a same-device redirect reaches Wallet QA; it only redirects to
 # the workspace page, which asks for the login. The published results page and its feed
-# (/results, /results.js, /styles.css, /v1/published) are public by design; publishing,
-# uploads and removal stay behind the login.
+# (/results, the page's bundle under /web/, /v1/published) are public by design; the bundle
+# is the same static code for everyone and holds no data. Publishing, uploads and removal
+# stay behind the login.
 {$QA_HOST} {
     encode gzip
-    @tester not path /protocol/* /trust/* /health/* /r/* /results /results.js /styles.css /v1/published
+    @tester not path /protocol/* /trust/* /health/* /r/* /results /web/* /v1/published
     basic_auth @tester {
         {$QA_AUTH_USER} {$QA_AUTH_HASH}
     }

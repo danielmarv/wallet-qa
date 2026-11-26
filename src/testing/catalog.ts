@@ -8,7 +8,7 @@ import type {
 // Test catalog. IDs follow docs/design.md section 1. Each entry says
 // what EUDIPLO is asked to do (steps), what the server checks on its own
 // (expected, disclosures), and what the tester confirms (manual).
-export const CATALOG_VERSION = '3.0.0';
+export const CATALOG_VERSION = '3.1.0';
 
 const PID_NS = 'eu.europa.ec.eudi.pid.1';
 const P = (...path: string[]): ClaimPath => path;
@@ -173,6 +173,26 @@ const reject = (
   rejectionReason: codes[0],
   instruction,
 });
+/** The same request as present(), handed over by the browser's Digital Credentials API. */
+const presentDcApi = (
+  configId: string,
+  extra: Partial<StepDefinition> = {},
+): StepDefinition =>
+  present(configId, {
+    channel: 'dc-api',
+    instruction:
+      'Press "Request with Digital Credentials API", pick the wallet in the browser\'s dialog and share the requested data.',
+    ...extra,
+  });
+const DC_API_PREREQS = [
+  'Wallet QA is open in a browser with the Digital Credentials API: on the phone with the wallet, or on a desktop browser that reaches the phone cross-device.',
+  'The wallet is registered with the operating system as a provider of digital credentials.',
+];
+const dcApiDialog: ManualCheck = {
+  id: 'dc-api-dialog',
+  ask: 'Did the browser or operating system offer the wallet for this request, without a QR code or link?',
+  expect: 'yes',
+};
 const QA_PID_PREREQ =
   'The wallet build accepts a PID from the Wallet QA issuer (dev trust anchor installed).';
 
@@ -886,6 +906,53 @@ const entries: Entry[] = [
         expect: 'yes',
       },
     ],
+  },
+  {
+    id: 'P-DCAPI-SDJWT',
+    section: 'Presentation',
+    label: 'Digital Credentials API: PID (dc+sd-jwt) age over 18',
+    description:
+      'The browser asks the wallet for the PID\'s age over 18, without a QR code or link. The wallet may share only that attribute. Works with the QA PID and the PID provider’s PID. (Signed OpenID4VP request over navigator.credentials.get, response mode dc_api.jwt, bound to this page\'s origin.)',
+    profile: 'oid4vp-1.0',
+    tags: ['pid', 'dc+sd-jwt', 'dc-api', 'positive', 'selective-disclosure'],
+    prerequisites: [...DC_API_PREREQS, 'A PID (dc+sd-jwt) is in the wallet.'],
+    steps: [
+      presentDcApi('pid-age-over-sd-jwt-vc', {
+        disclosures: [
+          {
+            credentialId: 'pid-sd-jwt',
+            equals: [{ path: P('age_equal_or_over', '18'), value: true }],
+            absent: [P('birthdate'), P('age_in_years'), P('age_birth_year')],
+            allowedOnly: ['age_equal_or_over'],
+          },
+        ],
+      }),
+    ],
+    manual: [dcApiDialog, verifierShown],
+  },
+  {
+    id: 'P-DCAPI-MDOC',
+    section: 'Presentation',
+    label: 'Digital Credentials API: QA PID (mso_mdoc) age over 18',
+    description:
+      'The browser asks the wallet for the QA PID\'s age over 18, without a QR code or link. The wallet may share only that attribute; the birth date must stay hidden. (Signed OpenID4VP request over navigator.credentials.get, response mode dc_api.jwt, bound to this page\'s origin.)',
+    profile: 'oid4vp-1.0',
+    tags: ['pid', 'mso_mdoc', 'dc-api', 'positive', 'selective-disclosure'],
+    prerequisites: [...DC_API_PREREQS, 'The QA PID (mso_mdoc) is in the wallet.'],
+    requires: ['I-PID-MDOC'],
+    steps: [
+      presentDcApi('qa-pid-age-over-mdoc', {
+        disclosures: [
+          {
+            credentialId: 'pid-mso-mdoc',
+            equals: [{ path: P(PID_NS, 'age_over_18'), value: true }],
+            absent: [P(PID_NS, 'birth_date')],
+            allowedOnly: ['age_over_18'],
+          },
+        ],
+      }),
+    ],
+    manual: [dcApiDialog, verifierShown],
   },
 
   // -------------------------------------------------------------- Rejection

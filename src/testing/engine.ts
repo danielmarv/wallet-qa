@@ -7,7 +7,13 @@ import {
   manualAssertions,
   noEvidence,
 } from './assertions.js';
-import { corruptSignature, digest, type Backend } from './eudiplo.js';
+import {
+  corruptSignature,
+  DC_API_PROTOCOL,
+  digest,
+  type Backend,
+  type DcApiResponse,
+} from './eudiplo.js';
 import {
   finish,
   record,
@@ -270,12 +276,44 @@ export class Engine {
           throw new Error(
             'Backend did not return a session and interaction URI',
           );
+        if (step.definition.channel === 'dc-api' && !result.dcApi?.request)
+          throw new Error(
+            'Backend did not return a Digital Credentials API request',
+          );
         await this.store.update(id, async (run) => {
           const current = run.steps[startIndex!];
           current.sessionId = result.sessionId;
           if (run.state === 'finished' || run.deleted) return;
-          current.uri = result.uri;
-          current.crossDeviceUri = result.crossDeviceUri;
+          if (current.definition.channel === 'dc-api') {
+            // The browser hands the request over; there is no link or QR code.
+            let responseUri: unknown;
+            try {
+              responseUri = JSON.parse(
+                Buffer.from(
+                  result.dcApi!.request.split('.')[1],
+                  'base64url',
+                ).toString(),
+              ).response_uri;
+            } catch {
+              /* Reported below. */
+            }
+            if (typeof responseUri !== 'string') {
+              finish(
+                run,
+                'error',
+                'Backend did not return a Digital Credentials API request',
+              );
+              return;
+            }
+            current.dcApi = {
+              protocol: DC_API_PROTOCOL,
+              request: result.dcApi!.request,
+              responseUri,
+            };
+          } else {
+            current.uri = result.uri;
+            current.crossDeviceUri = result.crossDeviceUri;
+          }
           if (current.definition.kind === 'fault') {
             const uri = new URL(result.uri);
             const sourceUri = uri.searchParams.get('request_uri');
@@ -358,6 +396,57 @@ export class Engine {
         return null;
       }
     });
+  }
+  /**
+   * Takes what navigator.credentials.get returned on the page and forwards it to
+   * the verifier. The verdict still comes from the EUDIPLO session, like for a
+   * response the wallet posts itself.
+   */
+  async dcApiResponse(id: string, body: DcApiResponse) {
+    const run = await this.lookup(id);
+    const step = run.steps[run.currentStep];
+    if (
+      run.state === 'finished' ||
+      step.state !== 'awaiting_wallet' ||
+      !step.dcApi ||
+      Date.parse(run.deadlineAt) <= Date.now()
+    )
+      throw new ApiError(
+        409,
+        'This run is not waiting for a Digital Credentials API response',
+      );
+    const backend = this.backends.resolve(step.backend);
+    if (!backend.dcApiResponse)
+      throw new ApiError(501, 'This backend has no Digital Credentials API support');
+    let status: number;
+    try {
+      status = await backend.dcApiResponse(step.dcApi.responseUri, body);
+    } catch (error) {
+      console.error(
+        `EUDIPLO DC API response delivery failed (run ${run.id}, step ${step.definition.id}, profile ${step.definition.backendProfile}): ${preparationErrorDetail(error)}`,
+      );
+      throw new ApiError(502, 'Could not deliver the wallet response to EUDIPLO');
+    }
+    const accepted = status >= 200 && status < 300;
+    await this.store.update(id, async (current) => {
+      // Only the outcome is kept; the response itself holds the presentation.
+      record(
+        current,
+        accepted ? 'dcapi.response.delivered' : 'dcapi.response.refused',
+        'error' in body ? `wallet error ${body.error}` : `HTTP ${status}`,
+      );
+    });
+    if (!accepted)
+      throw new ApiError(
+        422,
+        `EUDIPLO refused the wallet response (HTTP ${status})`,
+      );
+    // Poll right away, whatever the poll interval says.
+    await this.store.update(id, async (current) => {
+      current.steps[current.currentStep].lastPolledAt = undefined;
+    });
+    await this.tick(id);
+    return this.lookup(id);
   }
   /** Records the wallet's same-device redirect and returns the run it belongs to. */
   async redirectReceived(sessionId: string) {
@@ -498,6 +587,10 @@ export function liveRun(run: Run) {
       uri: step.uri ?? null,
       crossDeviceUri: step.crossDeviceUri ?? null,
       transactionCode: step.definition.txCode ?? null,
+      /** Set instead of uri: the page passes it to navigator.credentials.get. */
+      dcApi: step.dcApi
+        ? { protocol: step.dcApi.protocol, request: step.dcApi.request }
+        : null,
     },
     assertions: step.assertions.filter((a) => a.source !== 'wallet'),
     backendStatus: step.session?.status ?? null,

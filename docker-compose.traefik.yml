@@ -56,7 +56,7 @@ services:
       traefik.docker.network: ${TRAEFIK_NETWORK:-traefik}
       traefik.http.services.wallet-qa-app.loadbalancer.server.port: '8787'
       # Paths wallets call, and the public results page and feed: no login.
-      traefik.http.routers.wallet-qa-open.rule: Host(`${QA_HOST}`) && (PathPrefix(`/protocol/`) || PathPrefix(`/trust/`) || PathPrefix(`/health/`) || PathPrefix(`/r/`) || Path(`/results`) || Path(`/results.js`) || Path(`/styles.css`) || Path(`/v1/published`))
+      traefik.http.routers.wallet-qa-open.rule: Host(`${QA_HOST}`) && (PathPrefix(`/protocol/`) || PathPrefix(`/trust/`) || PathPrefix(`/health/`) || PathPrefix(`/r/`) || Path(`/results`) || PathPrefix(`/web/`) || Path(`/v1/published`))
       traefik.http.routers.wallet-qa-open.priority: '200'
       traefik.http.routers.wallet-qa-open.entrypoints: ${TRAEFIK_ENTRYPOINT:-websecure}
       traefik.http.routers.wallet-qa-open.tls.certresolver: ${TRAEFIK_CERTRESOLVER:-letsencrypt}

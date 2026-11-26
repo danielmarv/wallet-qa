@@ -1,0 +1,141 @@
+@use '@angular/material' as mat;
+
+// /start: one narrow column, the form first. Join and publishing follow, quieter.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding-top: 8px;
+
+  @include mat.card-overrides(
+    (
+      outlined-container-color: var(--mat-sys-surface),
+      outlined-outline-color: var(--mat-sys-outline-variant),
+      outlined-container-shape: var(--mat-sys-corner-large),
+    )
+  );
+  @include mat.button-overrides(
+    (
+      filled-container-height: 48px,
+      outlined-container-height: 48px,
+      text-container-height: 48px,
+    )
+  );
+}
+
+.message:empty {
+  display: none;
+}
+
+.message {
+  display: block;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.resume {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--mat-sys-corner-large);
+  background: var(--mat-sys-surface-container);
+}
+
+.card {
+  mat-card-header {
+    flex-direction: column;
+    padding: 20px 20px 0;
+  }
+
+  [mat-card-title] {
+    margin: 0;
+    font: var(--mat-sys-headline-small);
+  }
+
+  [mat-card-subtitle] {
+    margin-top: 6px;
+    font: var(--mat-sys-body-medium);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  mat-card-content {
+    padding: 16px 20px 20px;
+  }
+}
+
+.setup {
+  border-color: var(--mat-sys-primary);
+}
+
+.join {
+  padding: 0 4px;
+
+  h2 {
+    margin: 0;
+    font: var(--mat-sys-title-medium);
+  }
+
+  p {
+    margin: 4px 0 12px;
+  }
+}
+
+.join-form,
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.grow {
+  flex: 1 1 240px;
+}
+
+.big {
+  min-height: 48px;
+}
+
+.more {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 24px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.flat {
+  box-shadow: none;
+  border: 1px solid var(--mat-sys-outline-variant);
+
+  p {
+    margin: 0 0 12px;
+  }
+}
+
+// The native file input stays in the page (UI test runners can still set it) but is hidden
+// behind the Material button.
+.file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.muted {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}
+
+.file-name {
+  word-break: break-all;
+}

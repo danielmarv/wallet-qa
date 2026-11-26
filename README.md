@@ -182,14 +182,51 @@ step definitions and the tags `dpop`, `wallet-attestation`, `dc-api`, `annex-c`,
 
 ### Page contract for UI automation
 
-The page has a stable contract so Maestro, XCUITest or Espresso can drive it: visible
-`Start run`, `Open wallet`, `Run ID: <uuid>`, `Transaction code: <digits>`,
-`Status: …` / `Verdict: …`, and on `#liveRun` the attributes `data-run-id`,
-`data-completed`, `data-passed`, `data-verdict`, `data-attested`, `data-sync`. Open
-`/w/<workspace>?scenario=<id>` to preselect a test, `?run=<id>` to show a run.
+The page is an Angular app with Angular Material and the EUDIPLO client's Material 3 theme
+(source in `web/`, [issue #11](https://github.com/EUDIPLO/wallet-qa/issues/11)). It has a
+stable contract so Maestro, XCUITest, Espresso or Playwright can drive it:
+
+- Visible texts: `Start run`, `Open wallet`, `Run ID: <uuid>`, `Transaction code: <digits>`,
+  `Status: …` / `Verdict: …`.
+- On `#liveRun` the attributes `data-run-id`, `data-completed`, `data-passed`, `data-verdict`,
+  `data-attested`, `data-sync`.
+- Links: `/` is the overview, `/start` creates or joins a workspace, `/w/<workspace>?scenario=<id>` preselects a test, `?run=<id>` shows a run,
+  `?timeoutSeconds=<n>` sets the run timeout.
+- `?e2e=1` switches off Material animations and ripples, CSS transitions and the progress bar.
+- Test hooks: every element a flow taps or reads has an `id` and a `data-testid` with the same
+  value. Chrome on Android exposes the `id` to Maestro and UiAutomator, `data-testid` to
+  WebDriver and Playwright. `#liveRun` keeps its id (hook `live-run`).
+
+  | Hook | Element |
+  | --- | --- |
+  | `start-session`, `resume-workspace`, `intro-results`, `run-trace`, `catalog-overview`, `catalog-total`, `catalog-<section>`, `cta-start` | Overview (`/`): links to `/start`, continue the last workspace, the catalog at a glance |
+  | `start-link`, `results-link` | Top bar links to `/start` and `/results` |
+  | `workspace-form`, `tester`, `wallet-name`, `wallet-version`, `wallet-platform`, `wallet-device`, `save-workspace` | Create (`/start`) or edit a workspace (platform is a native `<select>`) |
+  | `resume-workspace`, `join-input`, `join-button` | `/start`: continue the last workspace, join one by its link or ID |
+  | `upload-report`, `upload-file`, `choose-file`, `upload-button` | `/start`: publish a report from another instance (a folded panel; open `upload-report` first) |
+  | `edit-workspace`, `join-toggle`, `join-link`, `join-qr` | Workspace bar, join on another device |
+  | `search`, `tag-filter`, `test-<test id>`, `progress`, `section-<section>` | Catalog (the tag filter is a native `<select>`; `section-issuance` etc. fold a section) |
+  | `test-label`, `test-id`, `test-tags`, `test-description`, `start-run`, `change-test` | Selected test, Start run, Change test (phone only: jumps to the catalog) |
+  | `verdict` | `Status: …` / `Verdict: …` |
+  | `open-wallet`, `tx-code`, `qr`, `wallet-uri` | Open wallet, `Transaction code: …`, QR code, link |
+  | `dc-api-button`, `dc-api-unsupported` | `Request with Digital Credentials API`, shown instead of Open wallet, QR code and link on the `P-DCAPI-*` tests; the hint when the browser lacks the API |
+  | `run-id`, `scenario-id`, `reason`, `step`, `instruction` | Run details |
+  | `checklist-q-<id>`, `checklist-q-<id>-yes`, `-no`, `-note`, `save-answers` | Checklist, shown once the wallet part is over |
+  | `checklist-later`, `checklist-open` | The folded checklist while the run waits for the wallet; `checklist-open` shows it early |
+  | `control-<id>` | Run controls (revoke, suspend) |
+  | `evidence`, `audit`, `cancel-run` | Evidence, audit JSON, cancel |
+  | `view-run-<run id>`, `report-junit`, `report-json`, `publish-results`, `confirm-ok`, `confirm-cancel` | Runs, reports, publishing |
+  | `message`, `instance-info` | Status message, this instance's trust setup |
+  | `features`, `feature-<id>`, `wallet-filter`, `results`, `result-<id>` | Results page (`/results`; the wallet filter is a native `<select>`) |
 
 The [Maestro flows](maestro/README.md) use the API instead of the page: they start a run,
 open its same-device link in the wallet, and wait for the verdict.
+[`maestro/web/live-run.yaml`](maestro/web/live-run.yaml) drives the page itself.
+
+`web/` is its own pnpm package: Angular 22 needs TypeScript 6.0 (the server uses 7) and
+Node.js 22.22.3 or later. `pnpm run build` builds it into `dist/web`, which the server serves
+under `/web/`; without it, `/`, `/w/<workspace>` and `/results` answer 503. `pnpm check` builds
+the page too.
 
 ## Test trust
 
@@ -213,6 +250,7 @@ publicly trusted TLS certificate; see [docs/hosting.md](docs/hosting.md).
 pnpm install
 pnpm run build && pnpm test       # unit tests use a fake EUDIPLO backend
 pnpm dev                          # http://127.0.0.1:8787 (EUDIPLO via Compose)
+pnpm dev:spa                      # rebuilds the page (web/) on change; Node.js 22.22.3+
 pnpm smoke                        # creates and deletes one EUDIPLO session per test step
 ```
 
@@ -227,7 +265,7 @@ pnpm smoke                        # creates and deletes one EUDIPLO session per 
   validates its own access certificate before signing and refuses both, so these need a
   switch in EUDIPLO or a request signed by Wallet QA itself.
 - Fixtures: registration certificates (`R-REG-*`), wallet attestation tenant (`I-WIA`),
-  deferred issuance webhook (`I-DEFERRED`), DC API and transaction data tests.
+  deferred issuance webhook (`I-DEFERRED`), Annex C and transaction data tests.
 - Maestro flows on top of `WalletQaClient` and the page contract.
 
 ## EUDIPLO notes

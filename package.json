@@ -5,13 +5,15 @@
   "private": true,
   "license": "Apache-2.0",
   "scripts": {
-    "build": "pnpm run build:web && pnpm run build:server",
+    "build": "pnpm run build:web && pnpm run build:spa && pnpm run build:server",
     "build:web": "rm -rf dist && mkdir -p dist/public && cp -R public/. dist/public/",
+    "build:spa": "pnpm --filter @wallet-qa/web build",
+    "dev:spa": "pnpm --filter @wallet-qa/web watch",
     "build:server": "tsc -p tsconfig.json",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server/server.js",
     "test": "node --import tsx --test tests/*.test.ts",
-    "check": "pnpm run build:server && pnpm test",
+    "check": "pnpm run build && pnpm test",
     "fixtures:generate": "node scripts/generate-fixtures.mjs",
     "smoke": "tsx scripts/smoke.ts"
   },

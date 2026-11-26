@@ -1,0 +1,60 @@
+<output id="message" class="message" aria-live="polite" data-testid="message">{{ message() }}</output>
+
+@if (lastWorkspace()) {
+  <div class="resume" id="resume" data-testid="resume">
+    <span>You have a workspace on this device.</span>
+    <button matButton="filled" type="button" id="resume-workspace" data-testid="resume-workspace" (click)="resume()">
+      Continue the last workspace
+    </button>
+  </div>
+}
+
+<mat-card appearance="outlined" class="card setup" id="setup" data-testid="setup">
+  <mat-card-header>
+    <h1 mat-card-title>Start a test session</h1>
+    <p mat-card-subtitle>
+      A workspace groups your runs and the wallet build you test. Open its link on the phone and the laptop to see the
+      same runs on both.
+    </p>
+  </mat-card-header>
+  <mat-card-content>
+    <qa-workspace-form [value]="formValue" [busy]="busy()" (saved)="create($event)" />
+  </mat-card-content>
+</mat-card>
+
+<!-- Most testers join by opening the workspace link or scanning its QR code; this is the fallback. -->
+<section class="join" id="join-existing" data-testid="join-existing" aria-labelledby="join-heading">
+  <h2 id="join-heading">Already have a workspace?</h2>
+  <p class="muted">Open its link, scan its QR code, or paste the link or ID here.</p>
+  <form class="join-form" (submit)="$event.preventDefault(); join()">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="grow">
+      <mat-label>Workspace link or ID</mat-label>
+      <input matInput id="join-input" data-testid="join-input" placeholder="https://…/w/…" [value]="joinInput()" (input)="joinInput.set($any($event.target).value)" />
+    </mat-form-field>
+    <button matButton="outlined" type="submit" class="big" id="join-button" data-testid="join-button">Join</button>
+  </form>
+</section>
+
+<section class="more" aria-label="Publishing and this instance">
+  <mat-expansion-panel class="flat" id="upload-report" data-testid="upload-report">
+    <mat-expansion-panel-header>
+      <mat-panel-title>Publish a report from another instance</mat-panel-title>
+    </mat-expansion-panel-header>
+    <p class="muted">
+      Upload a workspace JSON report (Reports → JSON) to the public <a routerLink="/results">results page</a>. It is
+      marked self-reported. Only the wallet, build, platform, device, versions and verdicts are published.
+    </p>
+    <div class="inline">
+      <label for="upload-file" class="visually-hidden">Workspace JSON report</label>
+      <input #file type="file" accept="application/json,.json" id="upload-file" data-testid="upload-file" class="file" (change)="chooseFile($event)" />
+      <button matButton="outlined" type="button" class="big" id="choose-file" data-testid="choose-file" (click)="file.click()">
+        Choose file
+      </button>
+      <span class="muted file-name" id="upload-file-name" data-testid="upload-file-name">{{ uploadFile()?.name ?? 'No file chosen' }}</span>
+      <button matButton="outlined" type="button" class="big" id="upload-button" data-testid="upload-button" [disabled]="!uploadFile()" (click)="upload()">
+        Publish as self-reported
+      </button>
+    </div>
+  </mat-expansion-panel>
+  <qa-instance-info />
+</section>

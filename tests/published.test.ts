@@ -47,7 +47,7 @@ async function setup() {
     publicOrigin: ORIGIN,
     retentionMs: 3600000,
     pollMs: 0,
-    versions: { catalog: '3.0.0', sdk: '7.6.0', eudiplo: '9.2.0' },
+    versions: { catalog: '3.1.0', sdk: '7.6.0', eudiplo: '9.2.0' },
   });
   return { store, workspaces, backend, engine };
 }
@@ -80,7 +80,9 @@ test('features come from the test definition', () => {
   assert.ok(scenarioFeatures(byId('I-PID-MDOC')).includes('mdoc'));
   assert.deepEqual(scenarioFeatures(byId('R-SIG')), ['presentation']);
   const features = feed([], SCENARIOS).features;
-  assert.equal(features.find((f) => f.id === 'dc-api')?.covered, false);
+  assert.ok(scenarioFeatures(byId('P-DCAPI-MDOC')).includes('dc-api'));
+  assert.equal(features.find((f) => f.id === 'dc-api')?.covered, true);
+  assert.equal(features.find((f) => f.id === 'annex-c')?.covered, false);
   assert.equal(features.find((f) => f.id === 'dpop')?.covered, true);
   // Only I-WIA has it, and I-WIA is not ready yet.
   assert.equal(features.find((f) => f.id === 'wallet-attestation')?.covered, false);
@@ -103,7 +105,7 @@ test('publishing from runs keeps only the published fields and the latest result
   assert.equal(result.tests.length, 1);
   assert.equal(result.tests[0].scenarioId, 'I-EAA-NOTX');
   assert.equal(result.tests[0].testedAt, '2026-03-01T00:00:00.000Z');
-  assert.deepEqual(result.tests[0].versions, { catalog: '3.0.0', eudiplo: '9.2.0' });
+  assert.deepEqual(result.tests[0].versions, { catalog: '3.1.0', eudiplo: '9.2.0' });
   const serialized = JSON.stringify(result);
   for (const secret of ['Test"', 'Mustermann', latest.id, latest.steps[0].sessionId!])
     assert.ok(!serialized.includes(secret), `published record contains ${secret}`);
@@ -243,9 +245,9 @@ test('API: publish, public feed, upload and removal with the admin token', async
     assert.equal((await fetch(`${base}/v1/published/${record.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${ADMIN}` } })).status, 404);
     assert.equal((await (await fetch(`${base}/v1/published`)).json()).results.length, 1);
 
-    const page = await fetch(`${base}/results`);
-    assert.equal(page.status, 200);
-    assert.match(await page.text(), /Wallet QA results/);
+    // The results page is the Angular app (served at /results, tests/web.test.ts); without a
+    // built page it says so, while the feed above keeps working.
+    assert.equal((await fetch(`${base}/results`)).status, 503);
   } finally {
     await close();
   }

@@ -1,0 +1,173 @@
+<output id="message" class="message" aria-live="polite" data-testid="message">{{ message() }}</output>
+
+@if (workspace()) {
+  @if (editing()) {
+    <mat-card appearance="outlined" class="card" id="edit-panel" data-testid="edit-panel">
+      <mat-card-header><h2 mat-card-title>Workspace</h2></mat-card-header>
+      <mat-card-content>
+        <qa-workspace-form
+          [value]="formValue()"
+          [editing]="true"
+          [busy]="busy()"
+          (saved)="saveWorkspace($event)"
+          (cancelled)="editing.set(false)"
+        />
+      </mat-card-content>
+    </mat-card>
+  } @else {
+    <section class="bar" id="workspace-bar" data-testid="workspace-bar">
+      <p class="summary" id="workspace-summary" data-testid="workspace-summary">{{ summary() }}</p>
+      <div class="bar-actions">
+        <button matButton="outlined" type="button" id="edit-workspace" data-testid="edit-workspace" (click)="editing.set(true); showJoin.set(false)">
+          Edit
+        </button>
+        <button
+          matButton="outlined"
+          type="button"
+          id="join-toggle"
+          data-testid="join-toggle"
+          [attr.aria-expanded]="showJoin()"
+          (click)="showJoin.set(!showJoin())"
+        >
+          Join on another device
+        </button>
+      </div>
+    </section>
+  }
+
+  @if (showJoin()) {
+    <mat-card appearance="outlined" class="card" id="join-panel" data-testid="join-panel">
+      <mat-card-header><h2 mat-card-title>Join this workspace on another device</h2></mat-card-header>
+      <mat-card-content class="join">
+        <img [src]="joinQr()" alt="QR code of this workspace link" width="220" height="220" class="qr" id="join-qr" data-testid="join-qr" />
+        <p class="link" id="join-link" data-testid="join-link">{{ joinLink() }}</p>
+        <p class="muted">Anyone with this link can see and start runs in this workspace.</p>
+      </mat-card-content>
+      <mat-card-actions>
+        <button matButton type="button" id="join-close" data-testid="join-close" (click)="showJoin.set(false)">Close</button>
+      </mat-card-actions>
+    </mat-card>
+  }
+
+  @if (!loading()) {
+    <div class="layout" [class.run-active]="runActive()">
+      <div class="main">
+        <mat-card appearance="outlined" class="card" id="test-detail" data-testid="test-detail">
+          @if (selected(); as test) {
+            <mat-card-header class="detail-header">
+              <div class="detail-top">
+                <p class="test-id" mat-card-subtitle id="test-id" data-testid="test-id">{{ test.id }}</p>
+                <!-- On a phone the catalog is below the live run. -->
+                <button matButton type="button" class="change-test" id="change-test" data-testid="change-test" (click)="changeTest()">
+                  Change test
+                </button>
+              </div>
+              <h2 mat-card-title id="test-label" data-testid="test-label">{{ test.label }}</h2>
+              <ul class="chips" id="test-tags" data-testid="test-tags" aria-label="Profile and tags">
+                @for (chip of chips(); track chip) {
+                  <li>{{ chip }}</li>
+                }
+              </ul>
+            </mat-card-header>
+            <mat-card-content>
+              <p id="test-description" data-testid="test-description">{{ test.description }}</p>
+              @if (test.prerequisites.length) {
+                <ul class="muted" id="test-prerequisites" data-testid="test-prerequisites">
+                  @for (prerequisite of test.prerequisites; track $index) {
+                    <li>{{ prerequisite }}</li>
+                  }
+                </ul>
+              }
+              @if (test.requires?.length) {
+                <p class="muted" id="test-requires" data-testid="test-requires">Run first: {{ test.requires!.join(', ') }}</p>
+              }
+              @if (test.availability !== 'ready') {
+                <p class="warning" id="test-unavailable" data-testid="test-unavailable">{{ test.unavailableReason }}</p>
+              }
+            </mat-card-content>
+          } @else {
+            <mat-card-header><h2 mat-card-title id="test-label" data-testid="test-label">Select a test</h2></mat-card-header>
+          }
+          <mat-card-actions>
+            <button
+              matButton="filled"
+              type="button"
+              class="big full"
+              id="start-run"
+              data-testid="start-run"
+              [disabled]="starting() || selected()?.availability !== 'ready'"
+              (click)="start()"
+            >
+              Start run
+            </button>
+          </mat-card-actions>
+        </mat-card>
+
+        <qa-live-run
+          [live]="live()"
+          [sync]="sync()"
+          [emptyVerdict]="emptyVerdict()"
+          [saving]="saving()"
+          [pendingControls]="pendingControls()"
+          [dcApiBusy]="dcApiBusy()"
+          (openWalletClicked)="openWallet($event)"
+          (dcApiClicked)="requestDcApi()"
+          (controlUsed)="useControl($event)"
+          (answersSaved)="saveAnswers($event)"
+          (auditRequested)="downloadAudit()"
+          (cancelRequested)="cancel()"
+        />
+
+        <mat-card appearance="outlined" class="card" id="runs" data-testid="runs">
+          <mat-card-header><h2 mat-card-title>Runs in this workspace</h2></mat-card-header>
+          <mat-card-content>
+            @for (item of runs(); track item.id) {
+              <div class="run">
+                <span>{{ runLine(item) }}</span>
+                <button matButton type="button" [id]="'view-run-' + item.id" [attr.data-testid]="'view-run-' + item.id" (click)="view(item)">
+                  View
+                </button>
+              </div>
+            } @empty {
+              <p class="muted">No runs yet.</p>
+            }
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <aside class="side">
+        <mat-card appearance="outlined" class="card" id="catalog" data-testid="catalog">
+          <mat-card-content>
+            <qa-catalog [scenarios]="scenarios()" [runs]="runs()" [selectedId]="selectedId()" (selected)="choose($event)" />
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card appearance="outlined" class="card" id="reports" data-testid="reports">
+          <mat-card-header><h2 mat-card-title>Reports</h2></mat-card-header>
+          <mat-card-actions class="row">
+            <button matButton="outlined" type="button" id="report-junit" data-testid="report-junit" (click)="reportJunit()">JUnit XML</button>
+            <button matButton="outlined" type="button" id="report-json" data-testid="report-json" (click)="reportJson()">JSON</button>
+          </mat-card-actions>
+        </mat-card>
+
+        <mat-card appearance="outlined" class="card" id="publish" data-testid="publish">
+          <mat-card-header><h2 mat-card-title>Publish</h2></mat-card-header>
+          <mat-card-content>
+            <p class="muted">
+              Publishes the latest finished result of each test to the public <a href="/results">results page</a>: wallet,
+              build, platform, device, versions and verdicts. Your name, notes and checklist answers are not published. Do
+              not put personal data in the wallet or device fields.
+            </p>
+          </mat-card-content>
+          <mat-card-actions>
+            <button matButton="outlined" type="button" id="publish-results" data-testid="publish-results" (click)="publish()">
+              Publish results
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      </aside>
+    </div>
+  }
+}
+
+<qa-instance-info />

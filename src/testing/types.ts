@@ -34,6 +34,11 @@ export type StepDefinition = {
   kind: 'issuance' | 'presentation' | 'fault';
   backendProfile: string;
   configId?: string;
+  /**
+   * Presentation only. dc-api: the request is handed to the wallet by the browser's
+   * Digital Credentials API (navigator.credentials.get) instead of a link or QR code.
+   */
+  channel?: 'dc-api';
   credentialConfigurationIds?: string[];
   claims?: Record<string, Record<string, unknown>>;
   flow?: 'pre_authorized_code' | 'authorization_code';
@@ -135,6 +140,8 @@ export type Step = {
   sessionId?: string;
   uri?: string;
   crossDeviceUri?: string;
+  /** Set for dc-api steps: what the page passes to navigator.credentials.get. */
+  dcApi?: { protocol: string; request: string; responseUri: string };
   session?: SessionEvidence;
   assertions: Assertion[];
   observations: Observation[];

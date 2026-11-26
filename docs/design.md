@@ -19,14 +19,19 @@ each test's availability. Tests are grouped into three sections:
   metadata, short-lived credentials, credentials without key binding.
 - **Presentation (P-…)**: OpenID4VP with DCQL: the QA PID with all, one or age attributes in
   both formats, PIDs from a PID provider test environment, one or several EAAs, `credential_sets`
-  (OR/AND), value filters, selective disclosure, revoked, suspended and expired credentials, and
-  the tester declining a request.
+  (OR/AND), value filters, selective disclosure, revoked, suspended and expired credentials,
+  the tester declining a request, and the PID age check over the W3C Digital Credentials API
+  (`P-DCAPI-*`).
 - **Rejection (R-…)**: requests the wallet must refuse: credential not available, value filter
   that matches nothing, corrupted request signature, access certificate from an untrusted root,
   HTTP errors when fetching the request.
 
 Every presentation test can be run cross-device (QR code) and same-device (link); same-device
-runs return to Wallet QA through the presentation's redirect URI.
+runs return to Wallet QA through the presentation's redirect URI. The `P-DCAPI-*` tests have
+neither: EUDIPLO creates a `dc-api` request bound to the Wallet QA origin (`expected_origins`),
+the page passes it to `navigator.credentials.get` as `openid4vp-v1-signed`, and posts what the
+wallet returned to `POST /v1/runs/<id>/dc-api/response`. Wallet QA forwards it to EUDIPLO's
+response endpoint; the verdict comes from the EUDIPLO session as for every other presentation.
 
 ### Evaluation modes
 
@@ -51,8 +56,8 @@ Authorization code flow with the built-in authorization server, several credenti
 offer, batch issuance with an unlinkability check across two presentations, expired and
 replayed offers, an issuer outside the wallet's trust, HTTP faults on the issuer endpoints,
 `claim_sets`, optional credential sets, mDL with PID, verifier information from the
-registration certificate, transaction data, the W3C Digital Credentials API and ISO 18013-7
-Annex C, and a request object with an expired `exp` or a mismatching `client_id`.
+registration certificate, transaction data, ISO 18013-7 Annex C over the Digital Credentials
+API, and a request object with an expired `exp` or a mismatching `client_id`.
 
 Out of scope: proximity (ISO 18013-5 over BLE/NFC), PID issuance through a real eID flow,
 wallet onboarding, PIN and biometrics, backup. They have no EUDIPLO side.

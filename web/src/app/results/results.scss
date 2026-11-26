@@ -1,0 +1,151 @@
+@use '@angular/material' as mat;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1080px;
+  margin: 0 auto;
+
+  @include mat.card-overrides(
+    (
+      outlined-container-color: var(--mat-sys-surface),
+      outlined-outline-color: var(--mat-sys-outline-variant),
+      outlined-container-shape: var(--mat-sys-corner-large),
+    )
+  );
+  @include mat.table-overrides(
+    (
+      background-color: transparent,
+    )
+  );
+}
+
+.intro h1 {
+  margin: 8px 0 4px;
+  font: var(--mat-sys-headline-small);
+}
+
+.intro p {
+  margin: 0;
+}
+
+.message:empty {
+  display: none;
+}
+
+.message {
+  display: block;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+
+.card {
+  mat-card-header {
+    padding: 16px 16px 0;
+  }
+
+  mat-card-content {
+    padding-top: 12px;
+  }
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 32px;
+  }
+}
+
+.wallets {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  h2 {
+    margin: 0;
+    font: var(--mat-sys-title-large);
+  }
+}
+
+#results {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.provenance {
+  margin: 0 0 8px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.provenance.self-reported {
+  color: var(--mat-sys-tertiary);
+}
+
+// Five columns do not fit a phone; the table scrolls inside its card instead of the page.
+.table-scroll {
+  overflow-x: auto;
+}
+
+table {
+  min-width: 640px;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--mat-sys-corner-full);
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+  // After font: the shorthand resets line-height.
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.chip.passed {
+  background: var(--qa-success-soft);
+  color: var(--qa-success);
+}
+
+.chip.failed {
+  background: var(--qa-danger-soft);
+  color: var(--qa-danger);
+}
+
+.attested {
+  display: block;
+  margin-top: 4px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.muted {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+}

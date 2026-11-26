@@ -76,6 +76,8 @@ export function createApp(
     published?: PublishedStore;
     /** Bearer token that may remove published results; without it removal is off. */
     adminToken?: string;
+    /** The built page (dist/web/browser); without it / and /w/<id> answer 503. */
+    webDir?: string;
   },
 ) {
   const published = () => {
@@ -162,12 +164,40 @@ export function createApp(
       res.status(201).location('/v1/published').json(result);
     },
   );
-  app.use(express.json({ limit: '64kb' }));
   const lookup = async (req: Request) => {
     const id = String(req.params.id);
     if (!uuid.test(id)) throw new ApiError(404, 'Run not found');
     return engine.lookup(id);
   };
+  // Registered before the 64 kB JSON limit below: a presentation can be larger.
+  // What navigator.credentials.get returned on the page for a dc-api step: the
+  // wallet's encrypted response, or its OAuth error.
+  app.post(
+    '/v1/runs/:id/dc-api/response',
+    express.json({ limit: '1mb' }),
+    async (req, res) => {
+      const run = await lookup(req);
+      if (!object(req.body)) throw new ApiError(400, 'Expected a JSON object');
+      const { response, error } = req.body;
+      if (typeof response === 'string' && response && response.length <= 1048576)
+        res.json(liveRun(await engine.dcApiResponse(run.id, { response })));
+      else if (typeof error === 'string' && /^[a-zA-Z0-9_]{1,64}$/.test(error))
+        res.json(
+          liveRun(
+            await engine.dcApiResponse(run.id, {
+              error,
+              error_description: optionalText(
+                req.body.error_description,
+                'error_description',
+                500,
+              ),
+            }),
+          ),
+        );
+      else throw new ApiError(400, 'Expected response or error');
+    },
+  );
+  app.use(express.json({ limit: '64kb' }));
   app.get('/v1/environment', (_req, res) => {
     const file = path.join(options.publicDir, 'trust', 'trust.json');
     res.json({
@@ -353,7 +383,12 @@ export function createApp(
         await QRCode.toString(value, { type: 'svg', margin: 1, width: 260 }),
       );
   });
-  app.use(express.static(options.publicDir));
+  // The page is the Angular app in web/ (built to dist/web/browser). Its bundle is served under
+  // /web/ (deployUrl in web/angular.json), so a hosted proxy can open the bundle for the public
+  // results page with one path prefix. public/ keeps the trust files.
+  const webDir = options.webDir;
+  if (webDir) app.use('/web', express.static(webDir, { index: false }));
+  app.use(express.static(options.publicDir, { index: false }));
   // Same-device return after a presentation (EUDIPLO redirectUri with {sessionId}).
   app.get('/r/:sessionId', async (req, res) => {
     const run = await engine.redirectReceived(String(req.params.sessionId));
@@ -362,13 +397,14 @@ export function createApp(
       run ? `/w/${encodeURIComponent(run.owner)}?run=${run.id}` : '/',
     );
   });
-  app.get('/results', (_req, res) =>
-    res.sendFile(path.join(options.publicDir, 'results.html')),
-  );
-  // The page reads the workspace from the path: /w/<workspace id>.
-  app.get(['/', '/w/:ws'], (_req, res) =>
-    res.sendFile(path.join(options.publicDir, 'index.html')),
-  );
+  // The page reads the workspace from the path: /w/<workspace id>. Its routes are client-side.
+  // /start creates or joins a workspace. /results is the public results page, reading only
+  // GET /v1/published.
+  app.get(['/', '/start', '/w/:ws', '/results'], (_req, res) => {
+    if (!webDir)
+      throw new ApiError(503, 'The page is not built; run pnpm build');
+    res.sendFile(path.join(webDir, 'index.html'));
+  });
   app.use((_req, _res) => {
     throw new ApiError(404, 'Not found');
   });

@@ -18,6 +18,10 @@ import {
 import { TrustMonitor } from './testing/trust.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const publicDir = path.join(root, 'public');
+// The page (web/): dist/web/browser next to the built server, or after `pnpm build:spa` in dev.
+const webDir = [path.join(root, 'web', 'browser'), path.join(root, 'dist', 'web', 'browser')].find(
+  (dir) => existsSync(path.join(dir, 'index.html')),
+);
 const port = Number(process.env.PORT ?? 8787);
 const origin = (
   process.env.PUBLIC_ORIGIN ?? `http://localhost:${port}`
@@ -85,6 +89,7 @@ const app = createApp(engine, {
   trust: () => trust.current(),
   published,
   adminToken,
+  webDir,
 });
 // Loopback by default; Docker sets HOST=0.0.0.0 so the proxy container can reach it.
 const server = app.listen(port, process.env.HOST ?? '127.0.0.1', () =>

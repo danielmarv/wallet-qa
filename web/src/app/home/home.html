@@ -1,0 +1,74 @@
+<section class="intro" id="intro" data-testid="intro" aria-labelledby="intro-heading">
+  <div class="pitch">
+    <h1 id="intro-heading">Test an EUDI wallet against a real issuer and verifier</h1>
+    <p class="lead">
+      Pick a test, run it with the wallet on your phone, and get a verdict. EUDIPLO plays issuer and verifier; Wallet QA
+      decides from what EUDIPLO recorded and what you saw in the wallet.
+    </p>
+    <div class="actions">
+      <a matButton="filled" class="big" routerLink="/start" queryParamsHandling="preserve" id="start-session" data-testid="start-session">
+        Start a test session
+      </a>
+      @if (lastWorkspace()) {
+        <button matButton="outlined" type="button" class="big" id="resume-workspace" data-testid="resume-workspace" (click)="resume()">
+          Continue the last workspace
+        </button>
+      }
+      <a matButton class="big" routerLink="/results" id="intro-results" data-testid="intro-results">See published results</a>
+    </div>
+    <p class="why">
+      A wallet has to work with every issuer and verifier it meets, not just the one its team builds against. Each
+      verdict here rests on the protocol exchange itself, so a failure points at what the wallet sent. Published results
+      go to the <a routerLink="/results">results page</a>, where anyone can repeat them with the same build.
+    </p>
+  </div>
+
+  <ol class="trace" id="run-trace" data-testid="run-trace" aria-label="How a run works">
+    @for (step of trace; track step.title) {
+      <li class="trace-step">
+        <h2>{{ step.title }}</h2>
+        <p>{{ step.text }}</p>
+        @if (step.statuses.length) {
+          <div class="statuses">
+            @for (status of step.statuses; track status.text) {
+              <span class="status" [class]="status.tone">{{ status.text }}</span>
+            }
+          </div>
+        }
+      </li>
+    }
+  </ol>
+</section>
+
+@if (sections().length) {
+  <section class="catalog" id="catalog-overview" data-testid="catalog-overview" aria-labelledby="catalog-heading">
+    <div class="catalog-heading">
+      <h2 id="catalog-heading">What the tests check</h2>
+      <p class="muted" id="catalog-total" data-testid="catalog-total">{{ total() }}</p>
+    </div>
+    <div class="sections">
+      @for (section of sections(); track section.name) {
+        <div class="section" [id]="'catalog-' + section.name.toLowerCase()" [attr.data-testid]="'catalog-' + section.name.toLowerCase()">
+          <h3>{{ section.name }}</h3>
+          <p class="question">{{ section.question }}</p>
+          <p class="count">{{ countText(section) }}</p>
+          <ul>
+            @for (example of section.examples; track example) {
+              <li>{{ example }}</li>
+            }
+          </ul>
+        </div>
+      }
+    </div>
+  </section>
+}
+
+<!-- The overview ends where a visitor decides: start, or look at published results. -->
+<section class="cta" id="cta" data-testid="cta">
+  <p>Ready to test a wallet build? A session takes a minute to set up.</p>
+  <a matButton="filled" class="big" routerLink="/start" queryParamsHandling="preserve" id="cta-start" data-testid="cta-start">
+    Start a test session
+  </a>
+</section>
+
+<qa-instance-info />

@@ -1,3 +1,7 @@
+# The Angular web app (web/) is its own package: it needs TypeScript 6.0, the server 7.
+packages:
+  - web
+
 # Pre-approve build scripts for the packages C3 itself installs that need
 # them: `workerd` downloads the platform binary, `esbuild` and `sharp`
 # (via miniflare) download/build native bindings. Without these, pnpm 11+
@@ -6,3 +10,8 @@ allowBuilds:
   esbuild: true
   workerd: true
   sharp: true
+  # Angular's build (web/) pulls these in. They ship prebuilt binaries, so
+  # their install scripts (fallback native builds) are not needed.
+  '@parcel/watcher': false
+  lmdb: false
+  msgpackr-extract: false

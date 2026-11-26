@@ -1,0 +1,220 @@
+<!-- #liveRun and its data-* attributes are the page contract (README). -->
+<mat-card
+  appearance="outlined"
+  class="card"
+  id="liveRun"
+  data-testid="live-run"
+  [attr.data-run-id]="contract().runId"
+  [attr.data-completed]="contract().completed"
+  [attr.data-passed]="contract().passed"
+  [attr.data-verdict]="contract().verdict"
+  [attr.data-attested]="contract().attested"
+  [attr.data-sync]="contract().sync"
+>
+  <mat-card-header class="live-header">
+    <h2 mat-card-title>Live run</h2>
+    <output
+      id="verdict"
+      class="badge"
+      aria-live="polite"
+      data-testid="verdict"
+      [class.passed]="tone() === 'passed'"
+      [class.failed]="tone() === 'failed'"
+      >{{ badge() }}</output
+    >
+  </mat-card-header>
+  @if (awaiting() && !e2e) {
+    <mat-progress-bar mode="indeterminate" aria-label="Waiting for the wallet" />
+  }
+
+  <mat-card-content>
+    @if (live(); as run) {
+      <!-- The wallet hand-off comes first, so it is on screen on a phone without scrolling. -->
+      @if (awaiting()) {
+        <div class="interaction" id="interaction" data-testid="interaction">
+          @if (instruction()) {
+            <p class="instruction" id="instruction" data-testid="instruction">{{ instruction() }}</p>
+          }
+          @if (dcApi()) {
+            <!-- No QR code or link: the browser offers the wallet in its own dialog. -->
+            <button
+              matButton="filled"
+              type="button"
+              id="dc-api-button"
+              class="big full"
+              data-testid="dc-api-button"
+              [disabled]="dcApiBusy() || !dcApiSupported"
+              (click)="requestDcApi()"
+            >
+              Request with Digital Credentials API
+            </button>
+            @if (!dcApiSupported) {
+              <p class="warning" id="dc-api-unsupported" data-testid="dc-api-unsupported">{{ dcApiElsewhere }}</p>
+            }
+          } @else {
+          <!-- One tap opens the wallet: no menu or dialog in between. -->
+          <button
+            matButton="filled"
+            type="button"
+            id="open-wallet"
+            class="big full"
+            data-testid="open-wallet"
+            [disabled]="!walletUri()"
+            (click)="openWallet()"
+          >
+            Open wallet
+          </button>
+          @if (txCode()) {
+            <p class="tx" id="tx-code" data-testid="tx-code">{{ txCode() }}</p>
+          }
+          @if (qrSrc()) {
+            <img
+              class="qr"
+              id="qr"
+              data-testid="qr"
+              [src]="qrSrc()"
+              alt="Wallet interaction QR code"
+              width="240"
+              height="240"
+            />
+          }
+          <mat-expansion-panel class="flat" id="wallet-link" data-testid="wallet-link">
+            <mat-expansion-panel-header><mat-panel-title>Link</mat-panel-title></mat-expansion-panel-header>
+            <textarea
+              id="wallet-uri"
+              class="uri"
+              readonly
+              rows="3"
+              aria-label="Wallet interaction URI"
+              data-testid="wallet-uri"
+              [value]="run.currentStep.interaction.uri"
+            ></textarea>
+          </mat-expansion-panel>
+          }
+        </div>
+      }
+
+      <p id="reason" data-testid="reason">{{ reason() }}</p>
+      <p class="muted" id="step" data-testid="step">{{ step() }}</p>
+      <p class="muted" id="scenario-id" data-testid="scenario-id">Scenario: {{ run.scenarioId }} · {{ run.scenarioLabel }}</p>
+      <p class="muted" id="run-id" data-testid="run-id">Run ID: {{ run.id }}</p>
+
+      @if (run.controls.length) {
+        <div class="controls" id="controls" data-testid="controls">
+          @for (control of run.controls; track control.id) {
+            <button
+              matButton="outlined"
+              type="button"
+              [id]="'control-' + control.id" [attr.data-testid]="'control-' + control.id"
+              [disabled]="!control.available || pendingControls().has(control.id)"
+              (click)="useControl(control)"
+            >
+              {{ control.usedAt ? control.label + ' (done)' : control.label }}
+            </button>
+          }
+        </div>
+      }
+
+      @if (run.checklist.length && !checklistShown()) {
+        <!-- Folded while the wallet part runs, so nobody answers before trying. -->
+        <div class="checklist-later" id="checklist-later" data-testid="checklist-later">
+          <p class="muted">{{ checklistLater() }}</p>
+          <button matButton type="button" id="checklist-open" data-testid="checklist-open" (click)="openChecklist()">
+            Answer now
+          </button>
+        </div>
+      }
+      @if (run.checklist.length && checklistShown()) {
+        <section class="checklist" id="checklist" data-testid="checklist">
+          <h3>Checklist</h3>
+          <p class="muted">Blocking questions decide the verdict. Answer what you saw in the wallet.</p>
+          @for (item of run.checklist; track item.id) {
+            <div class="check" [class]="item.status" [id]="'checklist-q-' + item.id" [attr.data-testid]="'checklist-q-' + item.id">
+              <p class="ask">{{ item.ask }}{{ item.blocking ? '' : ' (not blocking)' }}</p>
+              <fieldset class="answers">
+                <legend class="visually-hidden">{{ item.ask }}</legend>
+                <div class="answer-buttons">
+                @for (value of ['yes', 'no']; track value) {
+                  <button
+                    type="button"
+                    [matButton]="answerOf(item) === value ? 'filled' : 'outlined'"
+                    [attr.aria-pressed]="answerOf(item) === value"
+                    [id]="'checklist-q-' + item.id + '-' + value" [attr.data-testid]="'checklist-q-' + item.id + '-' + value"
+                    [disabled]="run.completed"
+                    (click)="draft(item, { answer: $any(value) })"
+                  >
+                    {{ value === 'yes' ? 'Yes' : 'No' }}
+                  </button>
+                }
+                </div>
+              </fieldset>
+              <mat-form-field appearance="outline" class="full" subscriptSizing="dynamic">
+                <mat-label>Note (optional)</mat-label>
+                <input
+                  matInput
+                  [id]="'checklist-q-' + item.id + '-note'" [attr.data-testid]="'checklist-q-' + item.id + '-note'"
+                  [value]="noteOf(item)"
+                  [disabled]="run.completed"
+                  (input)="draft(item, { note: $any($event.target).value })"
+                />
+              </mat-form-field>
+              @if (item.answer) {
+                <small class="muted">{{ item.status === 'passed' ? 'As expected' : 'Not as expected' }}</small>
+              }
+            </div>
+          }
+          <button
+            matButton="filled"
+            type="button"
+            class="big"
+            id="save-answers" data-testid="save-answers"
+            [disabled]="run.completed || saving()"
+            (click)="saveAnswers()"
+          >
+            Save answers
+          </button>
+        </section>
+      }
+
+      <mat-expansion-panel class="flat" id="evidence" data-testid="evidence">
+        <mat-expansion-panel-header><mat-panel-title>Evidence</mat-panel-title></mat-expansion-panel-header>
+        <div class="table-scroll">
+          <table class="evidence">
+            <thead>
+              <tr><th>Check</th><th>Source</th><th>Result</th></tr>
+            </thead>
+            <tbody>
+              @for (assertion of run.assertions; track $index) {
+                <tr>
+                  <td>
+                    {{ assertion.stepId ?? 'checklist' }}: {{ assertion.id }}
+                    <small>{{ assertion.actual ?? assertion.expected }}</small>
+                  </td>
+                  <td>{{ assertion.source }}</td>
+                  <td [class]="assertion.status">{{ assertion.status }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="row">
+          <button matButton="outlined" type="button" id="audit" data-testid="audit" (click)="downloadAudit()">
+            Download audit JSON
+          </button>
+          <button
+            matButton="outlined"
+            type="button"
+            class="danger"
+            id="cancel-run" data-testid="cancel-run"
+            [disabled]="run.completed"
+            (click)="cancel()"
+          >
+            Cancel run
+          </button>
+        </div>
+      </mat-expansion-panel>
+    } @else {
+      <p class="muted" id="no-run" data-testid="no-run">Pick a test and tap Start run. A run started on another device of this workspace shows up here.</p>
+    }
+  </mat-card-content>
+</mat-card>

@@ -176,7 +176,7 @@ network and carry labels that do what `deploy/Caddyfile.hosted` does:
 
 | Router | Rule | Middleware |
 | --- | --- | --- |
-| `wallet-qa-open` | `QA_HOST` and `/protocol/`, `/trust/`, `/health/`, `/r/` (priority 200) | none: wallets call these |
+| `wallet-qa-open` | `QA_HOST` and `/protocol/`, `/trust/`, `/health/`, `/r/`, `/results`, `/web/`, `/v1/published` (priority 200) | none: wallets call these, and the results page is public |
 | `wallet-qa` | `QA_HOST` (priority 100) | `wallet-qa-auth` (basic auth) |
 | `wallet-qa-eudiplo` | `EUDIPLO_HOST` and not `/api` | none; `/api` has no router, so Traefik answers 404 |
 
@@ -241,8 +241,9 @@ volumes created by these images already belong to it. Two cases need a hand:
   `/trust/*`, `/health/*`, `/r/*` (redirects to the workspace page, which asks for the login),
   and the EUDIPLO hostname apart from `/api`.
 - Open without login by design: the published results page and its feed (`/results`,
-  `/results.js`, `/styles.css`, `/v1/published`). Publishing, uploads and removal stay
-  behind the login.
+  `/v1/published`), and the page's bundle under `/web/` that `/results` loads. The bundle is
+  the same static code for every visitor and holds no data. Publishing, uploads and removal
+  stay behind the login.
 - The login is optional. Without it (remove the basic auth middleware from the proxy, as
   `conformance.eudiplo.dev` does), anyone with the address can create workspaces, publish and
   upload; workspace retention and `QA_PUBLISHED_MAX` bound what they can store, and removal

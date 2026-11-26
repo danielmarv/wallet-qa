@@ -1,0 +1,76 @@
+@use '@angular/material' as mat;
+@use 'styles/theme-colors';
+
+// EUDIPLO's Material 3 theme (palettes from styles/_theme-colors.scss, Roboto, density 0). The
+// colour scheme follows the device. Light and dark are emitted separately, not as light-dark()
+// (theme-type: color-scheme): browsers before Chrome 123 and Safari 17.5 drop light-dark()
+// values, and stock Android emulator images, which UI test runs use, ship such a Chrome.
+html {
+  color-scheme: light;
+  @include mat.theme(
+    (
+      color: (
+        primary: theme-colors.$primary-palette,
+        tertiary: theme-colors.$tertiary-palette,
+        theme-type: light,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+
+  // Status colours, as in the EUDIPLO client.
+  --qa-success: #2e7d32;
+  --qa-danger: #c62828;
+  --qa-success-soft: color-mix(in srgb, var(--qa-success) 14%, transparent);
+  --qa-danger-soft: color-mix(in srgb, var(--qa-danger) 14%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+    @include mat.theme(
+      (
+        color: (
+          primary: theme-colors.$primary-palette,
+          tertiary: theme-colors.$tertiary-palette,
+          theme-type: dark,
+        ),
+      )
+    );
+
+    --qa-success: #81c784;
+    --qa-danger: #ef9a9a;
+  }
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+  background-color: var(--mat-sys-surface-container-lowest);
+  color: var(--mat-sys-on-surface);
+  -webkit-text-size-adjust: 100%;
+}
+
+// Content for screen readers only, such as a label without a visible counterpart.
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+// ?e2e=1: nothing moves under a test runner's tap.
+html.e2e *,
+html.e2e *::before,
+html.e2e *::after {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
+}

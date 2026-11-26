@@ -174,3 +174,6 @@ fixtures/
 !.env.hosted.example
 !.env.traefik.example
 maestro/wallet-qa-report.xml
+
+# Angular CLI cache of the web app
+.angular/

@@ -1,0 +1,67 @@
+# Drives the Wallet QA page in the phone's browser: start a run, open the wallet, read the
+# verdict. The other flows in this folder use the API; this one checks that the page itself can
+# be driven.
+#
+# Selectors are the page's test hooks. Each hook element has an HTML id equal to its data-testid,
+# because Chrome on Android gives Maestro the HTML id as resource-id but not data-testid.
+# ?e2e=1 switches off animations and ripples.
+#
+#   maestro test -e WORKSPACE=<workspace id> -e SCENARIO=I-EAA-NOTX \
+#     -e QA_URL=http://localhost:8787 maestro/web/live-run.yaml
+#
+# Between "Open wallet" and the verdict the wallet has to act: run a wallet adapter flow there
+# (for example ../wallets/<wallet>/accept-offer.yaml) or do it by hand. Runs with a checklist
+# wait for the answers on the page (checklist-q-<question id>-yes / -no, then save-answers).
+# Defaults are set in JavaScript, not in an env block: Maestro lets a flow's env block win
+# over -e, so -e QA_URL=... would be ignored.
+appId: "${typeof BROWSER_APP_ID !== 'undefined' ? BROWSER_APP_ID : 'com.android.chrome'}"
+---
+- evalScript: "${output.qaUrl = typeof QA_URL !== 'undefined' ? QA_URL : 'http://localhost:8787'}"
+- evalScript: "${output.browser = typeof BROWSER_APP_ID !== 'undefined' ? BROWSER_APP_ID : 'com.android.chrome'}"
+- evalScript: "${output.prompt = typeof CHROME_WALLET_PROMPT !== 'undefined' ? CHROME_WALLET_PROMPT : 'Continue'}"
+- openLink:
+    link: ${output.qaUrl}/w/${WORKSPACE}?scenario=${SCENARIO}&e2e=1
+    browser: true
+- extendedWaitUntil:
+    visible:
+      id: start-run
+      enabled: true
+    timeout: 20000
+- tapOn:
+    id: start-run
+- extendedWaitUntil:
+    visible:
+      id: open-wallet
+      enabled: true
+    timeout: 20000
+- assertVisible:
+    id: verdict
+    text: 'Status: awaiting wallet'
+- assertVisible:
+    id: run-id
+    text: 'Run ID: .+'
+- tapOn:
+    id: open-wallet
+# Chrome on Android (seen on the Android 16 emulator) asks "Do you trust this site with your
+# data?" before it hands an openid-credential-offer: link to the wallet. Continue and Cancel
+# both open the wallet app afterwards; CHROME_WALLET_PROMPT picks the button.
+- extendedWaitUntil:
+    visible: 'Do you trust this site with your data.*'
+    timeout: 5000
+    optional: true
+- runFlow:
+    when:
+      visible: 'Do you trust this site with your data.*'
+    commands:
+      - tapOn: ${output.prompt}
+# Wallet adapter here, e.g.  - runFlow: ../wallets/example/accept-offer.yaml
+# Back to the page: the browser comes to the front with its tab as it was.
+- launchApp:
+    appId: ${output.browser}
+    stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: verdict
+      text: '(Verdict: .+|Status: awaiting tester)'
+    timeout: 180000
+- takeScreenshot: live-run-result

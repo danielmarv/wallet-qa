@@ -1,7 +1,8 @@
 FROM node:26.13.1-alpine AS build
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY web/package.json web/
 RUN npm install -g pnpm@11.20.0 && pnpm install --frozen-lockfile --ignore-scripts
 
 COPY . .
@@ -9,7 +10,9 @@ RUN pnpm run build
 
 FROM node:26.13.1-alpine AS runtime
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
+# web/ has only build-time dependencies (the bundle is in dist/web), so --prod installs nothing for it.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY web/package.json web/
 RUN npm install -g pnpm@11.20.0 && pnpm install --prod --frozen-lockfile --ignore-scripts
 
 COPY --from=build /app/dist ./dist
